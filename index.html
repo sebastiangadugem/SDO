@@ -5,23 +5,23 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Embed</title>
     <style>
-      /* Reset y fullscreen real en móviles */
       html, body { height: 100%; margin: 0; }
       body { background: #000; }
       iframe {
         position: fixed; inset: 0;
         width: 100vw;
-        height: 100vh;       /* fallback */
-        height: 100dvh;      /* viewport dinámico moderno */
+        height: 100vh;  /* fallback */
+        height: 100dvh; /* viewport dinámico moderno */
         border: 0; display: block;
       }
     </style>
   </head>
   <body>
-    <!-- Cambia el SRC por tu URL -->
     <iframe
-      src="<iframe src="https://www.google.com/maps/d/embed?mid=19VBIxM8M5kwslxPrC2BJIYPm5b8nrGo&hl=es-419&ehbc=2E312F" width="640" height="480"></iframe>"
+      title="Mapa embebido"
+      src="https://www.google.com/maps/d/embed?mid=19VBIxM8M5kwslxPrC2BJIYPm5b8nrGo&hl=es-419&ehbc=2E312F"
       allowfullscreen
+      loading="lazy"
       referrerpolicy="no-referrer-when-downgrade">
     </iframe>
   </body>
