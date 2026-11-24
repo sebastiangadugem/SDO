@@ -6,7 +6,12 @@ Es un sitio 100 % estático (funciona en GitHub Pages, sin servidor ni API keys)
 ## Funciones
 
 **Mapa**
-- 4 mapas base: Calles (OpenStreetMap), Satélite (Esri), Relieve (OpenTopoMap) y Noche.
+- 5 mapas base: **Positron** (minimalista, por defecto), Calles (OpenStreetMap), Satélite (Esri), Relieve (OpenTopoMap) y Noche.
+  Positron se sirve como mapa vectorial desde [OpenFreeMap](https://openfreemap.org) porque los mosaicos de CARTO ya exigen API key.
+- **Capas del mapa SDO original** (pestaña *Capas*): los 214 elementos del mapa de Google My Maps
+  (2.º y 3.er trimestre, Presupuesto Participativo, INEIEM, polígonos TPBV y límites municipales),
+  con su ficha al hacer clic, encendido/apagado por capa y búsqueda. Viven en `data/sdo-original.geojson`.
+  Por privacidad, ese archivo no incluye nombres ni teléfonos de personas solicitantes.
 - 3 visualizaciones: marcadores agrupados, todos los puntos y mapa de calor.
 - Marcadores con icono y color por tipo de obra + punto de color por estatus; simbología plegable.
 - Buscador de solicitudes (folio, solicitante, localidad…) y de lugares de Morelos.

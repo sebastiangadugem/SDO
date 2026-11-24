@@ -67,7 +67,9 @@
 
   /* ---------------- Persistencia ---------------- */
   let items = [];
-  const prefs = Object.assign({ theme: "light", basemap: "voyager", view: "cluster", legend: true }, safeJSON(localStorage.getItem(PREFS_KEY)));
+  const prefs = Object.assign({ theme: "light", basemap: "positron", view: "cluster", legend: true, layers: null }, safeJSON(localStorage.getItem(PREFS_KEY)));
+  // v4: Positron pasa a ser el mapa base por defecto para todos
+  if (prefs.bmv !== 4) { prefs.basemap = "positron"; prefs.bmv = 4; }
 
   function safeJSON(s) { try { return JSON.parse(s) || {}; } catch { return {}; } }
   function loadItems() {
@@ -102,6 +104,9 @@
   /* ---------------- Mapa ---------------- */
   const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/";
   const BASEMAPS = {
+    // Positron (estilo minimalista de CARTO/OpenMapTiles) servido por OpenFreeMap: vectorial y sin API key.
+    // Los mosaicos raster de basemaps.cartocdn.com ya exigen API key y devuelven "API KEY REQUIRED".
+    positron: { label: "Positron", gl: "https://tiles.openfreemap.org/styles/positron", attr: '&copy; <a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', thumb: ESRI + "Canvas/World_Light_Gray_Base/MapServer/tile/12/1828/919" },
     voyager: { label: "Calles", url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", attr: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', thumb: "https://tile.openstreetmap.org/12/919/1828.png", retina: false },
     sat: { label: "Satélite", url: ESRI + "World_Imagery/MapServer/tile/{z}/{y}/{x}", attr: "Imágenes &copy; Esri, Maxar, Earthstar Geographics", thumb: ESRI + "World_Imagery/MapServer/tile/12/1828/919", overlay: ESRI + "Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" },
     topo: { label: "Relieve", url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", attr: '&copy; OpenStreetMap, <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)', thumb: "https://a.tile.opentopomap.org/11/459/914.png", sub: "abc", maxZoom: 17 },
@@ -109,7 +114,7 @@
   };
 
   const map = L.map("map", {
-    center: CAT.center, zoom: CAT.zoom, zoomControl: false, preferCanvas: false,
+    center: CAT.center, zoom: CAT.zoom, zoomControl: false, preferCanvas: false, maxZoom: 19,
     maxBounds: L.latLngBounds(CAT.bounds).pad(0.6), minZoom: 8
   });
   L.control.zoom({ position: "topleft", zoomInTitle: "Acercar", zoomOutTitle: "Alejar" }).addTo(map);
@@ -118,10 +123,12 @@
 
   let baseLayer = null, labelLayer = null;
   function setBasemap(key) {
-    const b = BASEMAPS[key] || BASEMAPS.voyager;
+    const b = BASEMAPS[key] || BASEMAPS.positron;
     if (baseLayer) map.removeLayer(baseLayer);
     if (labelLayer) { map.removeLayer(labelLayer); labelLayer = null; }
-    baseLayer = L.tileLayer(b.url, { attribution: b.attr, subdomains: b.sub || "abc", maxZoom: 19, maxNativeZoom: b.maxZoom || 19 }).addTo(map);
+    if (b.gl && L.maplibreGL) baseLayer = L.maplibreGL({ style: b.gl, attribution: b.attr, interactive: false }).addTo(map);
+    else if (b.gl) return setBasemap("voyager"); // MapLibre no cargó: usa calles OSM
+    else baseLayer = L.tileLayer(b.url, { attribution: b.attr, subdomains: b.sub || "abc", maxZoom: 19, maxNativeZoom: b.maxZoom || 19 }).addTo(map);
     if (b.overlay) {
       labelLayer = L.tileLayer(b.overlay, { maxZoom: 19, maxNativeZoom: b.maxZoom || 19, pane: "overlayPane" }).addTo(map);
     }
@@ -789,6 +796,11 @@
     const reqs = filtered.slice(0, 6);
     let html = "";
     if (reqs.length) html += `<p class="sr-group">Solicitudes</p>` + reqs.map((it) => `<button data-req="${it.id}"><span class="req-ico" style="background:${tipoOf(it.tipo).color};width:28px;height:28px">${svgPath(tipoOf(it.tipo).icon)}</span><span>${esc(it.titulo)}<small>${esc(it.folio)} · ${esc(it.municipio)}</small></span></button>`).join("");
+    const lh = legacyHits(q); sRes._legacy = lh;
+    if (lh.length) html += `<p class="sr-group">Mapa SDO original</p>` + lh.map((x, i) => {
+      const fl = x.f.properties.fields, mun = fl.MUNICIPIO || fl.Municipio || "";
+      return `<button data-legacy="${i}"><span class="req-ico" style="background:${x.f.properties.color};width:28px;height:28px;border-radius:50%"></span><span>${esc(x.f.properties.name || "Sin nombre")}<small>${esc(x.layer.name)}${mun ? " · " + esc(mun) : ""}</small></span></button>`;
+    }).join("");
     if (placeResults.length) html += `<p class="sr-group">Lugares</p>` + placeResults.map((p, i) => `<button data-place="${i}">${svgPath("M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12Z")}<span>${esc(p.name || p.display_name.split(",")[0])}<small>${esc(p.display_name)}</small></span></button>`).join("");
     if (!html) html = `<p class="sr-group">Sin coincidencias</p>`;
     sRes.innerHTML = html; sRes.hidden = false; hlIndex = -1;
@@ -808,8 +820,14 @@
     else if (e.key === "Escape") { sRes.hidden = true; sInput.blur(); }
   });
   sRes.addEventListener("click", (e) => {
-    const r = e.target.closest("[data-req]"), p = e.target.closest("[data-place]");
+    const r = e.target.closest("[data-req]"), p = e.target.closest("[data-place]"), lg = e.target.closest("[data-legacy]");
     if (r) openDetail(r.dataset.req);
+    if (lg) {
+      const x = sRes._legacy[+lg.dataset.legacy];
+      map.once("moveend", () => x.lyr.openPopup());
+      map.flyTo(x.lyr.getLatLng(), Math.max(map.getZoom(), 15), { duration: 0.6 });
+      sInput.value = ""; filters.q = ""; render();
+    }
     if (p) {
       const pl = placeResults[+p.dataset.place];
       if (pl.boundingbox) { const bb = pl.boundingbox.map(Number); map.flyToBounds([[bb[0], bb[2]], [bb[1], bb[3]]], { maxZoom: 17 }); }
@@ -1113,14 +1131,116 @@
   }
   $("#btnSeed").addEventListener("click", seedDemo);
 
+  /* ---------------- Capas del mapa SDO original (Google My Maps) ---------------- */
+  map.createPane("legacyPoly").style.zIndex = 380;
+  map.createPane("legacyPts").style.zIndex = 590;
+  const legacy = { layers: [], groups: new Map(), feats: [] };
+  const LABEL_FIX = (n) => n.replace(/^3do /, "3er ").trim();
+  const isMoney = (k) => /monto/i.test(k);
+  const prettyKey = (k) => (k === k.toUpperCase() ? k.charAt(0) + k.slice(1).toLowerCase() : k.replace(/_/g, " "));
+  const TITLE_KEYS = ["NOMBRE DE LA OBRA", "PLANEACION", "PETICIÓN O ASUNTO", "OBRA", "Plantel"];
+
+  function legacyPopup(f, layer) {
+    const p = f.properties, fl = p.fields || {};
+    const tk = TITLE_KEYS.find((k) => fl[k]);
+    const desc = tk ? fl[tk] : "";
+    const rest = Object.entries(fl).filter(([k]) => k !== tk);
+    return `<div class="pop pop-legacy">
+      <div class="pop-folio"><i class="lg-dot" style="background:${p.color}"></i>${esc(layer.name)}</div>
+      <div class="pop-title">${esc(p.name || "Sin nombre")}</div>
+      ${desc ? `<p class="pop-desc">${esc(desc)}</p>` : ""}
+      ${rest.length ? `<dl class="pop-dl">${rest.map(([k, v]) => `<dt>${esc(prettyKey(k))}</dt><dd${isMoney(k) ? ' class="money"' : ""}>${esc(v)}</dd>`).join("")}</dl>` : ""}
+    </div>`;
+  }
+
+  function buildLegacy(data) {
+    legacy.layers = data.layers.map((l) => ({ ...l, name: LABEL_FIX(l.name) }));
+    const saved = prefs.layers || {};
+    for (const l of legacy.layers) {
+      const feats = data.features.filter((f) => f.properties.layer === l.id);
+      const isBase = /capa base/i.test(l.name);
+      l.isBase = isBase;
+      const g = L.geoJSON(feats, {
+        pane: l.kind === "point" ? "legacyPts" : "legacyPoly",
+        pointToLayer: (f, ll) => L.circleMarker(ll, { pane: "legacyPts", radius: 7, color: "#fff", weight: 2, fillColor: f.properties.color, fillOpacity: 0.95 }),
+        style: (f) => isBase
+          ? { color: "#773357", weight: 1.2, opacity: 0.6, fillColor: "#773357", fillOpacity: 0.02, dashArray: "4 3" }
+          : { color: f.properties.color, weight: 1.5, opacity: 0.9, fillColor: f.properties.color, fillOpacity: 0.22 },
+        onEachFeature: (f, lyr) => {
+          if (isBase) {
+            const mun = CAT.municipios.find((m) => norm(m).startsWith(norm(f.properties.name).slice(0, 6))) || f.properties.name;
+            if (mun) lyr.bindTooltip(esc(mun), { sticky: true, className: "legacy-tip", opacity: 0.95 });
+          } else {
+            lyr.bindPopup(() => legacyPopup(f, l), { maxWidth: 320, className: "legacy-popup" });
+            if (f.properties.name) lyr.bindTooltip(esc(f.properties.name), { sticky: l.kind !== "point", direction: "top", className: "legacy-tip", opacity: 0.95 });
+            if (l.kind !== "point") {
+              lyr.on("mouseover", () => lyr.setStyle({ fillOpacity: 0.4, weight: 2.5 }));
+              lyr.on("mouseout", () => g.resetStyle(lyr));
+            }
+          }
+          legacy.feats.push({ f, lyr, layer: l });
+        }
+      });
+      legacy.groups.set(l.id, g);
+      l.visible = saved[l.id] !== false;
+      if (l.visible) g.addTo(map);
+    }
+    const nPts = data.features.filter((f) => f.geometry.type === "Point").length;
+    $("#layersMeta").textContent = `${nPts} puntos y ${data.features.length - nPts} polígonos${data.updated ? " · " + data.updated : ""}`;
+    drawLayerList();
+  }
+
+  function drawLayerList() {
+    $("#layerList").innerHTML = legacy.layers.map((l) => {
+      const colors = [...new Set(legacy.feats.filter((x) => x.layer.id === l.id).map((x) => x.f.properties.color))].slice(0, 4);
+      const sw = l.kind === "point"
+        ? `<span class="ly-sw">${colors.map((c) => `<i class="lg-dot" style="background:${c}"></i>`).join("")}</span>`
+        : `<span class="ly-sw"><i class="ly-poly${l.isBase ? " dashed" : ""}" style="--c:${l.isBase ? "#773357" : colors[0]}"></i></span>`;
+      return `<div class="ly-row${l.visible ? " on" : ""}" data-ly="${l.id}">
+        <label class="ly-label"><input type="checkbox" ${l.visible ? "checked" : ""}>${sw}<span class="ly-name">${esc(l.name)}<small>${l.count} ${l.kind === "point" ? "puntos" : "polígonos"}</small></span></label>
+        <button class="ly-zoom" type="button" title="Acercar a la capa" aria-label="Acercar a ${esc(l.name)}">${svgPath("M21 21l-4.3-4.3M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14ZM8 11h6M11 8v6")}</button>
+      </div>`;
+    }).join("");
+  }
+  function setLayerVisible(id, on) {
+    const l = legacy.layers.find((x) => x.id === id), g = legacy.groups.get(id); if (!l || !g) return;
+    l.visible = on; if (on) g.addTo(map); else map.removeLayer(g);
+    prefs.layers = Object.fromEntries(legacy.layers.map((x) => [x.id, x.visible])); savePrefs();
+  }
+  $("#layerList").addEventListener("change", (e) => {
+    const row = e.target.closest(".ly-row"); if (!row) return;
+    setLayerVisible(row.dataset.ly, e.target.checked); row.classList.toggle("on", e.target.checked);
+  });
+  $("#layerList").addEventListener("click", (e) => {
+    const z = e.target.closest(".ly-zoom"); if (!z) return;
+    const id = z.closest(".ly-row").dataset.ly, g = legacy.groups.get(id);
+    if (!legacy.layers.find((x) => x.id === id).visible) { setLayerVisible(id, true); drawLayerList(); }
+    map.flyToBounds(g.getBounds().pad(0.1), { maxZoom: 15, duration: 0.6 });
+  });
+  const setAllLayers = (on) => { legacy.layers.forEach((l) => setLayerVisible(l.id, on)); drawLayerList(); };
+  $("#btnLayersAll").addEventListener("click", () => setAllLayers(true));
+  $("#btnLayersNone").addEventListener("click", () => setAllLayers(false));
+
+  // La búsqueda también encuentra puntos de las capas originales visibles
+  function legacyHits(q) {
+    const n = norm(q); if (n.length < 2) return [];
+    return legacy.feats.filter((x) => x.f.geometry.type === "Point" && x.layer.visible &&
+      norm([x.f.properties.name, ...Object.values(x.f.properties.fields || {})].join(" ")).includes(n)).slice(0, 6);
+  }
+
+  fetch("data/sdo-original.geojson?v=4").then((r) => r.json()).then(buildLegacy)
+    .catch(() => { $("#layersMeta").textContent = "No se pudieron cargar las capas originales."; });
+
   /* ---------------- Arranque ---------------- */
   applyTheme(prefs.theme);
   setBasemap(prefs.basemap);
-  setLegend(prefs.legend !== false && innerWidth >= 768);
   loadItems();
+  setLegend(prefs.legend !== false && innerWidth >= 768 && items.length > 0);
   render();
   if (items.length) map.fitBounds(L.latLngBounds(items.map((i) => [i.lat, i.lng])).pad(0.15), { maxZoom: 14 });
   else map.fitBounds(CAT.bounds);
+  // Sin solicitudes capturadas aún: abre la pestaña de capas para que se vea qué hay en el mapa
+  if (!items.length) $('.tab[data-tab="layers"]').click();
 
   // Enlace directo: #SDO-2026-0001
   const openFromHash = () => {

@@ -12,9 +12,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-  <link rel="stylesheet" href="css/styles.css?v=3" />
+  <link rel="stylesheet" href="css/styles.css?v=7" />
 </head>
 <body>
   <!-- ============ HEADER ============ -->
@@ -77,6 +78,7 @@
       <nav class="tabs" role="tablist">
         <button role="tab" class="tab active" aria-selected="true" data-tab="list">Solicitudes <span class="count" id="countBadge">0</span></button>
         <button role="tab" class="tab" aria-selected="false" data-tab="filters">Filtros <span class="dot" id="filterDot" hidden></span></button>
+        <button role="tab" class="tab" aria-selected="false" data-tab="layers">Capas</button>
         <button role="tab" class="tab" aria-selected="false" data-tab="stats">Resumen</button>
       </nav>
 
@@ -147,6 +149,20 @@
           </div>
         </div>
         <button class="btn btn-secondary btn-block" data-action="reset-filters">Limpiar filtros</button>
+      </section>
+
+      <!-- CAPAS -->
+      <section class="tab-panel" data-panel="layers" hidden>
+        <div class="layers-head">
+          <h4>Mapa SDO original</h4>
+          <p class="hint" id="layersMeta">Cargando capas…</p>
+        </div>
+        <div class="layer-list" id="layerList"></div>
+        <div class="layers-actions">
+          <button class="btn btn-sm btn-on-surface" id="btnLayersAll" type="button">Mostrar todas</button>
+          <button class="btn btn-sm btn-transparent" id="btnLayersNone" type="button">Ocultar todas</button>
+        </div>
+        <p class="hint">Los datos vienen de la exportación del mapa de Google My Maps. Haz clic en un punto o polígono para ver su ficha. Los nombres y teléfonos de las personas solicitantes no se publican.</p>
       </section>
 
       <!-- RESUMEN -->
@@ -428,7 +444,9 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-  <script src="js/catalogos.js?v=3"></script>
-  <script src="js/app.js?v=3"></script>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.3/leaflet-maplibre-gl.js"></script>
+  <script src="js/catalogos.js?v=7"></script>
+  <script src="js/app.js?v=7"></script>
 </body>
 </html>

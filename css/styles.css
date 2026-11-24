@@ -92,7 +92,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 400; line-height: 1.2; }
 p { margin: 0; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
-svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+svg:where(:not(.leaflet-zoom-animated)) { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 :focus-visible { outline: 3px solid var(--sem-focus); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
 [hidden] { display: none !important; }
@@ -522,3 +522,33 @@ input[type=range] { width: 100%; accent-color: var(--sem-accent-primary); }
   .drawer-open .map-controls { opacity: 0; pointer-events: none; }
 }
 .map-controls { transition: opacity .2s; }
+
+/* ---------- Capas del mapa SDO original ---------- */
+.layers-head h4 { margin: 0 0 2px; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--sem-content-low); font-weight: 600; }
+.layers-head .hint { margin: 0 0 var(--gap-sm); }
+.layer-list { display: grid; gap: var(--gap-2xs); }
+.ly-row { display: flex; align-items: center; gap: var(--gap-xs); padding: 8px 8px 8px 10px; border-radius: var(--r-sm); border: 1px solid var(--sem-border-low); background: var(--sem-bg-base); transition: background .15s, border-color .15s; }
+.ly-row:hover { background: var(--sem-reactive-surface-hover, rgba(113,120,91,.1)); }
+.ly-row.on { border-color: var(--sem-accent-primary-low); }
+.ly-label { flex: 1; display: flex; align-items: center; gap: 10px; cursor: pointer; min-width: 0; }
+.ly-label input { accent-color: var(--sem-accent-primary); width: 16px; height: 16px; flex: none; margin: 0; }
+.ly-sw { display: inline-flex; gap: 2px; width: 34px; flex: none; }
+.ly-name { display: flex; flex-direction: column; font-size: 13.5px; line-height: 1.25; min-width: 0; }
+.ly-name small { color: var(--sem-content-low); font-size: 11.5px; }
+.ly-row:not(.on) .ly-name { color: var(--sem-content-low); }
+.ly-row:not(.on) .ly-sw { opacity: .45; }
+.ly-poly { width: 20px; height: 14px; border-radius: 3px; border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 25%, transparent); }
+.ly-poly.dashed { border-style: dashed; background: transparent; }
+.ly-zoom { border: 0; background: none; color: var(--sem-content-low); width: 30px; height: 30px; border-radius: var(--r-sm); display: grid; place-items: center; cursor: pointer; flex: none; }
+.ly-zoom:hover { background: var(--sem-accent-primary-low); color: var(--sem-on-primary-low); }
+.ly-zoom svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.layers-actions { display: flex; gap: var(--gap-xs); margin: var(--gap-sm) 0; }
+.lg-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.15); flex: none; vertical-align: -1px; }
+.pop-legacy .pop-folio { display: flex; align-items: center; gap: 6px; }
+.pop-desc { margin: 0 0 8px; font-size: 13px; line-height: 1.4; font-weight: 300; }
+.pop-dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 12px; max-height: 190px; overflow: auto; border-top: 1px solid var(--sem-border-low); padding-top: 8px; }
+.pop-dl dt { color: var(--sem-content-low); }
+.pop-dl dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+.pop-dl dd.money { font-variant-numeric: tabular-nums; color: var(--sem-accent-primary); }
+.legacy-tip { font-family: inherit; font-size: 12px; border-radius: var(--r-sm); border: 0; box-shadow: var(--elevation-low); }
+.tabs .tab { white-space: nowrap; }
